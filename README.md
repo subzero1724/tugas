@@ -1,146 +1,168 @@
-# 🧠 Proyek Akhir: Analisis dan Prediksi Attrition Karyawan PT Jaya Jaya Maju
+# 🎓 Student Dropout Prediction - Jaya Jaya Institut
 
-## 📍 Ringkasan Proyek
+Proyek ini merupakan inisiatif analisis dan prediksi **dropout mahasiswa** pada institusi pendidikan tinggi **Jaya Jaya Institut**. Dengan pendekatan **data science dan machine learning**, proyek ini bertujuan membantu pihak kampus dalam:
 
-PT **Jaya Jaya Maju**, perusahaan di sektor **Edutech**, menghadapi tantangan serius terkait **tingginya angka karyawan resign (attrition)**. Proyek ini bertujuan untuk:
-
-* Menganalisis pola dan penyebab utama karyawan resign.
-* Membangun model prediktif menggunakan **Machine Learning**.
-* Menyediakan **dashboard interaktif** untuk mendukung pengambilan keputusan oleh tim HR.
-* Memberikan **rekomendasi strategis** untuk menurunkan angka attrition dan meningkatkan retensi karyawan.
+* Mengidentifikasi mahasiswa yang berisiko tinggi putus studi (dropout).
+* Memahami faktor-faktor yang memengaruhi keberhasilan akademik.
+* Memberikan insight bagi kebijakan akademik dan layanan mahasiswa.
 
 ---
-
-## 💼 1. Business Understanding
-
-### 🌟 Permasalahan Bisnis
-
-* Angka resign yang tinggi mengganggu kelangsungan operasional dan produktivitas.
-* Belum diketahui faktor dominan penyebab karyawan resign.
-* Sulitnya mengidentifikasi karyawan yang berpotensi resign secara dini.
-
-### ✅ Tujuan Proyek
-
-* Mengidentifikasi faktor-faktor utama penyebab resign.
-* Memprediksi karyawan yang berisiko tinggi untuk resign.
-* Memberikan rekomendasi kebijakan berbasis data kepada manajemen HR.
-
----
-
-## 2. Persiapan
-
 ### 📄 Sumber Data
 
-Dataset yang digunakan berasal dari repositori publik Dicoding dan berisi informasi terkait data karyawan seperti umur, departemen, job role, level pekerjaan, status lembur, lama bekerja, dan status attrition (resign atau tidak). Data ini digunakan untuk menganalisis pola resign serta membangun model prediktif attrition.
+Dataset yang digunakan untuk proyek ini berasal dari repositori publik Dicoding. Dataset ini berisi beragam informasi terkait data demografis, sosio-ekonomi, dan akademik mahasiswa. Fitur-fitur utama mencakup detail pendaftaran (mode aplikasi, urutan pendaftaran, program studi), kualifikasi sebelumnya, informasi keluarga (kualifikasi dan pekerjaan orang tua), status beasiswa, kebutuhan khusus pendidikan, status finansial (tunggakan, biaya kuliah), serta performa akademik per semester (jumlah unit kurikuler yang diambil, dievaluasi, diluluskan, dan nilai). Variabel target adalah status akhir mahasiswa, yang mengindikasikan apakah mahasiswa tersebut **Dropout**, **Lulus** (Graduate), atau masih **Terdaftar** (Enrolled) – dalam kasus data `data.csv` Anda, ini direpresentasikan oleh kolom `Status` (kemungkinan 0 untuk Dropout dan 1 untuk Lulus).
 
-📎 Link Dataset:
-https://github.com/dicodingacademy/dicoding_dataset/blob/main/employee/employee_data.csv
+Data ini sangat krusial untuk menganalisis pola dan faktor-faktor yang mempengaruhi keputusan mahasiswa untuk melanjutkan atau menghentikan studi, serta untuk membangun model prediktif guna mengidentifikasi mahasiswa yang berisiko dropout.
 
----
+📎 Link Dataset (Sumber Asli/Referensi):
+[https://github.com/dicodingacademy/dicoding_dataset/blob/main/students_performance/data.csv](https://github.com/dicodingacademy/dicoding_dataset/blob/main/students_performance/data.csv)
 
-## 📊 3. Business Dashboard
+# 📊 Business Dashboard - Analisis Dropout Mahasiswa
 
-Dashboard dibuat menggunakan **Looker Studio**, menampilkan insight utama seperti:
-
-* **Attrition rate** saat ini sebesar **12%**.
-* **Distribusi attrition** berdasarkan departemen dan job role.
-* Korelasi antara **OverTime**, **JobLevel**, dan **YearsAtCompany** terhadap attrition.
-* Hasil prediksi model Machine Learning.
-
-📎 Link Dashboard:
-[https://lookerstudio.google.com/reporting/d48d085e-e9e4-4a65-a48b-637afd486138](https://lookerstudio.google.com/reporting/d48d085e-e9e4-4a65-a48b-637afd486138)
+Dashboard interaktif ini dikembangkan menggunakan **Looker Studio** untuk menganalisis fenomena **dropout mahasiswa** berdasarkan data dari `data_sep.csv`. Tujuan utama dashboard adalah membantu institusi pendidikan memahami faktor-faktor penyebab mahasiswa dropout serta memberikan wawasan yang dapat ditindaklanjuti.
 
 ---
 
-## 🔍 4. Temuan Utama
+## 🔑 Ringkasan Insight & Visualisasi
 
-1. **Attrition Rate** perusahaan saat ini adalah **12%**.
-2. Departemen dengan tingkat resign tertinggi:
+### 🎯 KPI Utama (Key Performance Indicators):
 
-   * **Sales**
-   * **Research & Development**
-3. Job role dengan tingkat resign tinggi:
+* **Rata-rata Nilai Semester 1 Mahasiswa Lulus:** 12.64
+* **Rata-rata Nilai Semester 1 Mahasiswa Dropout:** 7.26
+* **Rata-rata Kelulusan Unit Semester 1 Mahasiswa Lulus:** 13,767
+* **Rata-rata Kelulusan Unit Semester 1 Mahasiswa Dropout:** 3,626
 
-   * **Sales Executive**
-   * **Laboratory Technician**
-4. Faktor utama penyebab resign:
+### 📊 Visualisasi Distribusi Dropout:
 
-   * **OverTime** → Karyawan lembur cenderung lebih banyak resign.
-   * **JobLevel rendah** (Level 1–2) → Potensi resign lebih tinggi.
-   * **YearsAtCompany < 3 tahun** → Masa kerja pendek meningkatkan risiko resign.
+* **Top 5 Program Studi dengan Dropout Tertinggi:**
+
+  1. Biofuel Production Technologies
+  2. Informatics
+  3. Equiniculture
+  4. Management
+  5. Basic Education
+
+### 📈 Analisis Performa Akademik:
+
+* **Approved Units vs Enrolled Units Semester 1 & 2:**
+
+  * Mahasiswa **lulus** menyelesaikan lebih banyak unit daripada yang **dropout**.
+* **Distribusi Nilai Semester 1 & 2:**
+
+  * Mahasiswa dropout dominan di nilai < 12
+  * Mahasiswa lulus dominan di nilai 12–17
+
+### 🎛️ Filter Interaktif:
+
+* **Course Name**
+* **Attendance**
+* **Gender**
 
 ---
 
-## 🤖 5. Machine Learning Modeling
+## 🔍 Temuan Utama
+
+1. **Tingkat Dropout yang Tinggi pada Program Tertentu**
+
+   * Biofuel Production Technologies mencatat tingkat dropout tertinggi.
+
+2. **Performa Akademik sebagai Prediktor Dropout**
+
+   * Nilai dan jumlah unit yang disetujui pada semester pertama berperan besar.
+   * Dropout memiliki nilai rata-rata semester 1 yang rendah (7.26).
+
+3. **Distribusi Nilai dan Kelulusan Unit**
+
+   * Lulusan cenderung memiliki nilai yang stabil dan menyelesaikan lebih banyak unit.
+
+4. **Potensi Segmentasi Berdasarkan Filter Demografis**
+
+   * Dengan filter interaktif, pengguna bisa mengeksplorasi lebih lanjut faktor penyebab dropout berdasarkan gender, attendance, dan program studi.
+
+---
+
+## 🌐 Link Dashboard Interaktif
+
+[Klik untuk membuka dashboard Looker Studio](https://lookerstudio.google.com/reporting/551cbbdc-c372-482f-a128-018b2cdca93e)
+[Klik untuk membuka Streamlit](https://lookerstudio.google.com/reporting/551cbbdc-c372-482f-a128-018b2cdca93e)
+
+---
+
+
+## 🧠 Modeling
 
 ### ⚖️ Algoritma yang Digunakan
 
-* **Random Forest Classifier**
+Model yang digunakan dalam proyek ini adalah:
 
-### ⚙️ Fitur Penting dalam Model
-
-* `OverTime`
-* `MonthlyIncome`
-* `JobLevel`
-* `YearsAtCompany`
-
-### 📈 Hasil Evaluasi
-
-* **Akurasi Model**: **87%**
-* **Confusion Matrix** dan **Feature Importance** digunakan untuk evaluasi performa.
+* **Random Forest Classifier** ✅ *(terbaik)*
+* **Logistic Regression**
+* **XGBoost Classifier**
 
 ---
 
-## 💻 6. Menajalnkan File Prediksi
+## 📈 Evaluasi Model
 
-### 1️⃣ Membuat dan Mengaktifkan Virtual Environment (venv)
+Berdasarkan hasil evaluasi:
 
-Agar lingkungan pengembangan tetap terisolasi, ikuti langkah berikut:
+* **Model Terbaik**: Random Forest
+* **Akurasi Model**: **95%**
+* **Evaluasi Tambahan**:
+
+  * Confusion Matrix
+  * Feature Importance
+
+Model ini mampu secara akurat mengidentifikasi mahasiswa yang berisiko dropout berdasarkan atribut seperti status pernikahan, jenis kelamin, mode pendaftaran, nilai masuk, dan lainnya.
+
+---
+
+## ▶️ Menjalankan Proyek
+
+### 1️⃣ Buat dan Aktifkan Virtual Environment
 
 ```bash
-# Membuat virtual environment
+# Buat environment
 python -m venv venv
 
-# Mengaktifkan virtual environment (Windows)
+# Aktifkan di Windows
 venv\Scripts\activate
 
-# Atau jika menggunakan Mac/Linux
+# Aktifkan di Mac/Linux
 source venv/bin/activate
 ```
 
-### 2️⃣ Instalasi dan Setup
-
-Setelah virtual environment aktif:
+### 2️⃣ Instalasi Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3️⃣ Jalankan Prediksi
-
-Setelah semua dependensi terinstal:
+### 3️⃣ Jalankan Aplikasi Streamlit
 
 ```bash
-python prediction.py
+streamlit run main.py
 ```
 
-Script akan:
+Fungsi utama script:
 
-* Membersihkan data.
-* Melatih model Random Forest.
-* Menampilkan hasil evaluasi dan prediksi karyawan baru.
+* Membersihkan data
+* Melatih model terbaik (Random Forest)
+* Menampilkan prediksi dan hasil evaluasi
+* Menyediakan antarmuka input untuk data baru
 
 ---
-## 📦 7. Struktur Direktori Proyek
+
+## 📁 Struktur Direktori Proyek
 
 ```
-employee-attrition-project/
+student-dropout-predictor/
 │
 ├── data/
-│   └── employee_data.csv
+│   └── data.csv
 ├── model/
-│   └── rf_model.pkl
-├── predict.py
+│   └── random_forest_model.pkl
+│   └── preprocessor.pkl
+├── main.py
+├── Rafli_Nur_Tugas.ipynb
 ├── requirements.txt
 ├── dashboard/
 │   └── Rapurikalanikov-dashboard.png
@@ -151,20 +173,22 @@ employee-attrition-project/
 
 ## ✅ Kesimpulan Akhir
 
-Proyek ini menunjukkan bahwa pendekatan berbasis **data science dan machine learning** dapat membantu perusahaan Edutech seperti **PT Jaya Jaya Maju** dalam:
+Proyek ini membuktikan bahwa pendekatan berbasis **data science dan machine learning** sangat efektif dalam membantu institusi pendidikan seperti **Jaya Jaya Institut** dalam:
 
-* Mengidentifikasi akar penyebab karyawan resign.
-* Mengembangkan sistem peringatan dini berbasis prediksi.
-* Merumuskan kebijakan HR yang **lebih proaktif dan efisien**.
+* Mendeteksi lebih awal potensi mahasiswa yang berisiko mengalami **dropout**.
+* Memahami faktor-faktor utama yang memengaruhi kelulusan dan putus studi.
+* Memberikan wawasan berbasis data untuk pengambilan kebijakan akademik yang lebih baik.
 
-Dengan **dashboard interaktif**, **akurasi model 87%**, serta **rekomendasi berbasis data**, proyek ini diharapkan dapat **menurunkan attrition rate secara signifikan** dan **meningkatkan retensi karyawan**, mendukung pertumbuhan dan stabilitas perusahaan di masa depan.
+Dengan model **Random Forest** yang mencapai **akurasi 95%**, serta dukungan visualisasi dalam bentuk **dashboard interaktif**, proyek ini dapat menjadi alat bantu pengambilan keputusan yang penting bagi pihak manajemen institusi.
 
 ---
-## 💡 Rekomendasi untuk Tim HR
 
-1. **Tinjau kembali kebijakan lembur** untuk mengurangi beban kerja berlebih.
-2. **Perkuat program onboarding dan mentoring** untuk karyawan baru.
-3. **Tawarkan jalur karier yang jelas** kepada karyawan dengan level rendah.
-4. **Manfaatkan model prediksi attrition** untuk mendeteksi karyawan berisiko resign sejak dini.
+## 💡 Rekomendasi untuk Institusi
+
+1. **Lakukan monitoring rutin** terhadap mahasiswa dengan status akademik rentan berdasarkan prediksi model.
+2. **Perkuat sistem bimbingan akademik dan konseling**, terutama untuk mahasiswa tahun pertama atau yang memiliki latar belakang akademik lemah.
+3. **Tingkatkan komunikasi antara dosen wali, mahasiswa, dan pihak akademik** agar intervensi dapat dilakukan lebih dini.
+4. **Gunakan data secara berkala untuk evaluasi kebijakan**, seperti kurikulum, beban studi, dan layanan mahasiswa.
+5. **Kembangkan sistem notifikasi berbasis prediksi**, yang memberi sinyal peringatan ketika mahasiswa menunjukkan pola risiko dropout.
 
 ---

@@ -147,9 +147,6 @@ if submitted:
 
         st.write(f"Tingkat Keyakinan Prediksi: **{confidence * 100:.2f}%**")
 
-        with st.expander("Lihat Data Input yang Digunakan"):
-            st.dataframe(input_data.style.set_properties(**{'text-align': 'left'}))
-
 
     except ValueError as e:
         st.error(f"Terjadi kesalahan saat transformasi data: {e}")
