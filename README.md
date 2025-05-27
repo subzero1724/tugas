@@ -15,8 +15,6 @@ Data ini sangat krusial untuk menganalisis pola dan faktor-faktor yang mempengar
 
 📎 Link Dataset (Sumber Asli/Referensi):
 [https://github.com/dicodingacademy/dicoding_dataset/blob/main/students_performance/data.csv](https://github.com/dicodingacademy/dicoding_dataset/blob/main/students_performance/data.csv)
-📎 Link streamlit (Sumber Asli/Referensi):
-[https://3yiswuyyvktcxbzqv7lnyn.streamlit.app/](https://3yiswuyyvktcxbzqv7lnyn.streamlit.app/)
 
 # 📊 Business Dashboard - Analisis Dropout Mahasiswa
 
@@ -85,7 +83,8 @@ Dashboard interaktif ini dikembangkan menggunakan **Looker Studio** untuk mengan
 ## 🌐 Link Dashboard Interaktif
 
 [Klik untuk membuka dashboard Looker Studio](https://lookerstudio.google.com/reporting/551cbbdc-c372-482f-a128-018b2cdca93e)
-[Klik untuk membuka Streamlit](https://lookerstudio.google.com/reporting/551cbbdc-c372-482f-a128-018b2cdca93e)
+
+[Klik untuk membuka Streamlit](https://3yiswuyyvktcxbzqv7lnyn.streamlit.app/)
 
 ---
 
