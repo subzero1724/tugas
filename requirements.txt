@@ -35,8 +35,9 @@ matplotlib==3.9.4
 matplotlib-inline==0.1.7
 narwhals==1.41.0
 nest-asyncio==1.6.0
-numpy>=1.22.4,<1.29.0
+numpy==2.0.2
 nvidia-nccl-cu12==2.26.5
+packaging==24.2
 pandas==2.2.3
 parso==0.8.4
 pexpect==4.9.0
@@ -59,9 +60,9 @@ referencing==0.36.2
 requests==2.32.3
 rpds-py==0.25.1
 scikit-learn==1.6.1
-scipy==1.12.0
+scipy==1.13.1
 seaborn==0.13.2
-six==1.16.0
+six==1.17.0
 smmap==5.0.2
 SQLAlchemy==2.0.40
 stack-data==0.6.3
