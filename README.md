@@ -15,10 +15,12 @@ Data ini sangat krusial untuk menganalisis pola dan faktor-faktor yang mempengar
 
 📎 Link Dataset (Sumber Asli/Referensi):
 [https://github.com/dicodingacademy/dicoding_dataset/blob/main/students_performance/data.csv](https://github.com/dicodingacademy/dicoding_dataset/blob/main/students_performance/data.csv)
+📎 Link streamlit (Sumber Asli/Referensi):
+[https://3yiswuyyvktcxbzqv7lnyn.streamlit.app/](https://3yiswuyyvktcxbzqv7lnyn.streamlit.app/)
 
 # 📊 Business Dashboard - Analisis Dropout Mahasiswa
 
-Dashboard interaktif ini dikembangkan menggunakan **Looker Studio** untuk menganalisis fenomena **dropout mahasiswa** berdasarkan data dari `data_sep.csv`. Tujuan utama dashboard adalah membantu institusi pendidikan memahami faktor-faktor penyebab mahasiswa dropout serta memberikan wawasan yang dapat ditindaklanjuti.
+Dashboard interaktif ini dikembangkan menggunakan **Looker Studio** untuk menganalisis fenomena **dropout mahasiswa** berdasarkan data dari `data.csv`. Tujuan utama dashboard adalah membantu institusi pendidikan memahami faktor-faktor penyebab mahasiswa dropout serta memberikan wawasan yang dapat ditindaklanjuti.
 
 ---
 
