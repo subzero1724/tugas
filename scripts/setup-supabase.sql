@@ -1,3 +1,9 @@
+-- Drop existing triggers first to avoid conflicts
+DROP TRIGGER IF EXISTS update_suppliers_updated_at ON suppliers;
+DROP TRIGGER IF EXISTS update_products_updated_at ON products;
+DROP TRIGGER IF EXISTS update_invoices_updated_at ON invoices;
+DROP TRIGGER IF EXISTS update_invoice_items_updated_at ON invoice_items;
+
 -- Create suppliers table
 CREATE TABLE IF NOT EXISTS suppliers (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -59,14 +65,19 @@ CREATE TABLE IF NOT EXISTS invoice_items (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Clear existing data
+DELETE FROM invoice_items;
+DELETE FROM invoices;
+DELETE FROM products;
+DELETE FROM suppliers;
+
 -- Insert sample suppliers (including Sg01 that you're using)
 INSERT INTO suppliers (supplier_code, supplier_name, address, phone, email, contact_person, status) VALUES
 ('Sg01', 'Topyota', 'Jl. Industri No. 123, Jakarta', '021-1234567', 'contact@topyota.com', 'John Doe', 'active'),
 ('S01', 'PT Elektronik Jaya', 'Jl. Sudirman No. 45, Jakarta', '021-5551234', 'info@elektronikjaya.com', 'Ahmad Wijaya', 'active'),
 ('S02', 'CV Komputer Prima', 'Jl. Gatot Subroto No. 78, Bandung', '022-7778888', 'sales@komputerprima.com', 'Siti Nurhaliza', 'active'),
 ('S03', 'UD Teknologi Maju', 'Jl. Diponegoro No. 12, Surabaya', '031-9990000', 'admin@teknologimaju.com', 'Budi Santoso', 'active'),
-('S04', 'PT Digital Solutions', 'Jl. Thamrin No. 56, Jakarta', '021-3334444', 'contact@digitalsolutions.com', 'Lisa Permata', 'active')
-ON CONFLICT (supplier_code) DO NOTHING;
+('S04', 'PT Digital Solutions', 'Jl. Thamrin No. 56, Jakarta', '021-3334444', 'contact@digitalsolutions.com', 'Lisa Permata', 'active');
 
 -- Insert sample products (including S21 that you're using)
 INSERT INTO products (product_code, product_name, category, unit, base_price, description, status) VALUES
@@ -80,79 +91,20 @@ INSERT INTO products (product_code, product_name, category, unit, base_price, de
 ('P007', 'Speaker Bluetooth', 'Electronics', 'pcs', 350000, 'Speaker Bluetooth portable', 'active'),
 ('P008', 'Hard Drive External 1TB', 'Electronics', 'pcs', 850000, 'Hard Drive External 1TB USB 3.0', 'active'),
 ('P009', 'RAM DDR4 8GB', 'Electronics', 'pcs', 650000, 'RAM DDR4 8GB 2400MHz', 'active'),
-('P010', 'SSD 256GB', 'Electronics', 'pcs', 750000, 'SSD SATA 256GB', 'active')
-ON CONFLICT (product_code) DO NOTHING;
+('P010', 'SSD 256GB', 'Electronics', 'pcs', 750000, 'SSD SATA 256GB', 'active');
 
 -- Insert sample invoices
 INSERT INTO invoices (invoice_number, supplier_id, invoice_date, subtotal, tax_amount, discount_amount, total_amount, status, notes, created_by) 
-SELECT 
-    'INV-001',
-    s.id,
-    '2024-01-15',
-    8500000,
-    0,
-    0,
-    8500000,
-    'paid',
-    'Pembelian laptop untuk kantor',
-    'admin'
-FROM suppliers s WHERE s.supplier_code = 'S01'
-ON CONFLICT (invoice_number) DO NOTHING;
-
-INSERT INTO invoices (invoice_number, supplier_id, invoice_date, subtotal, tax_amount, discount_amount, total_amount, status, notes, created_by) 
-SELECT 
-    'INV-002',
-    s.id,
-    '2024-01-20',
-    1000000,
-    0,
-    0,
-    1000000,
-    'approved',
-    'Pembelian aksesoris komputer',
-    'admin'
-FROM suppliers s WHERE s.supplier_code = 'S02'
-ON CONFLICT (invoice_number) DO NOTHING;
+VALUES 
+('INV-001', (SELECT id FROM suppliers WHERE supplier_code = 'S01'), '2024-01-15', 8500000, 0, 0, 8500000, 'paid', 'Pembelian laptop untuk kantor', 'admin'),
+('INV-002', (SELECT id FROM suppliers WHERE supplier_code = 'S02'), '2024-01-20', 1000000, 0, 0, 1000000, 'approved', 'Pembelian aksesoris komputer', 'admin');
 
 -- Insert sample invoice items
 INSERT INTO invoice_items (invoice_id, product_id, product_code, product_name, quantity, unit_price, line_total)
-SELECT 
-    i.id,
-    p.id,
-    p.product_code,
-    p.product_name,
-    1,
-    8500000,
-    8500000
-FROM invoices i, products p 
-WHERE i.invoice_number = 'INV-001' AND p.product_code = 'P001'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO invoice_items (invoice_id, product_id, product_code, product_name, quantity, unit_price, line_total)
-SELECT 
-    i.id,
-    p.id,
-    p.product_code,
-    p.product_name,
-    2,
-    250000,
-    500000
-FROM invoices i, products p 
-WHERE i.invoice_number = 'INV-002' AND p.product_code = 'P002'
-ON CONFLICT DO NOTHING;
-
-INSERT INTO invoice_items (invoice_id, product_id, product_code, product_name, quantity, unit_price, line_total)
-SELECT 
-    i.id,
-    p.id,
-    p.product_code,
-    p.product_name,
-    1,
-    750000,
-    750000
-FROM invoices i, products p 
-WHERE i.invoice_number = 'INV-002' AND p.product_code = 'P003'
-ON CONFLICT DO NOTHING;
+VALUES 
+((SELECT id FROM invoices WHERE invoice_number = 'INV-001'), (SELECT id FROM products WHERE product_code = 'P001'), 'P001', 'Laptop Dell Inspiron 15', 1, 8500000, 8500000),
+((SELECT id FROM invoices WHERE invoice_number = 'INV-002'), (SELECT id FROM products WHERE product_code = 'P002'), 'P002', 'Mouse Wireless Logitech', 2, 250000, 500000),
+((SELECT id FROM invoices WHERE invoice_number = 'INV-002'), (SELECT id FROM products WHERE product_code = 'P003'), 'P003', 'Keyboard Mechanical', 1, 750000, 750000);
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_suppliers_code ON suppliers(supplier_code);
@@ -170,6 +122,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Create triggers (after dropping existing ones)
 CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON suppliers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
