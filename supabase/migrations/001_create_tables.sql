@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     total_amount DECIMAL(15,2) NOT NULL,
     status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'pending', 'approved', 'paid', 'cancelled')),
     notes TEXT,
-    created_by VARCHAR(100),
+    created_by VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -54,9 +54,9 @@ CREATE TABLE IF NOT EXISTS invoice_items (
     product_id UUID NOT NULL REFERENCES products(id),
     product_code VARCHAR(50) NOT NULL,
     product_name VARCHAR(255) NOT NULL,
-    quantity INTEGER NOT NULL CHECK (quantity > 0),
-    unit_price DECIMAL(15,2) NOT NULL CHECK (unit_price >= 0),
-    line_total DECIMAL(15,2) NOT NULL CHECK (line_total >= 0),
+    quantity DECIMAL(10,2) NOT NULL,
+    unit_price DECIMAL(15,2) NOT NULL,
+    line_total DECIMAL(15,2) NOT NULL,
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
