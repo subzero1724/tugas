@@ -1,229 +1,200 @@
-import { supabase } from "./supabase-client"
+import { createServerSupabaseClient } from "./supabase-client"
+import type { Invoice, Supplier, Product, DashboardStats } from "./types"
 
-export interface Supplier {
-  id: string
-  supplier_code: string
-  supplier_name: string
-  address?: string
-  phone?: string
-  email?: string
-  contact_person?: string
-  status: "active" | "inactive"
-  created_at: string
-  updated_at: string
-}
-
-export interface Product {
-  id: string
-  product_code: string
-  product_name: string
-  category?: string
-  unit: string
-  base_price: number
-  description?: string
-  status: "active" | "inactive"
-  created_at: string
-  updated_at: string
-}
-
-export interface Invoice {
-  id: string
-  invoice_number: string
-  supplier_id: string
-  invoice_date: string
-  due_date?: string
-  subtotal: number
-  tax_amount: number
-  discount_amount: number
-  total_amount: number
-  status: "draft" | "pending" | "approved" | "paid" | "cancelled"
-  notes?: string
-  created_by?: string
-  created_at: string
-  updated_at: string
-  supplier?: Supplier
-  items?: InvoiceItem[]
-}
-
-export interface InvoiceItem {
-  id: string
-  invoice_id: string
-  product_id: string
-  product_code: string
-  product_name: string
-  quantity: number
-  unit_price: number
-  line_total: number
-  notes?: string
-  created_at: string
-  updated_at: string
-}
+const supabase = createServerSupabaseClient()
 
 export async function getSuppliers(): Promise<Supplier[]> {
-  const { data, error } = await supabase.from("suppliers").select("*").eq("status", "active").order("supplier_name")
+  try {
+    const { data, error } = await supabase.from("suppliers").select("*").order("name")
 
-  if (error) {
-    console.error("Error fetching suppliers:", error)
+    if (error) {
+      console.error("Error fetching suppliers:", error)
+      throw new Error(`Failed to fetch suppliers: ${error.message}`)
+    }
+
+    return data || []
+  } catch (error) {
+    console.error("getSuppliers error:", error)
     throw error
   }
-
-  return data || []
 }
 
 export async function getProducts(): Promise<Product[]> {
-  const { data, error } = await supabase.from("products").select("*").eq("status", "active").order("product_name")
+  try {
+    const { data, error } = await supabase.from("products").select("*").order("name")
 
-  if (error) {
-    console.error("Error fetching products:", error)
+    if (error) {
+      console.error("Error fetching products:", error)
+      throw new Error(`Failed to fetch products: ${error.message}`)
+    }
+
+    return data || []
+  } catch (error) {
+    console.error("getProducts error:", error)
     throw error
   }
-
-  return data || []
 }
 
 export async function getInvoices(): Promise<Invoice[]> {
-  const { data, error } = await supabase
-    .from("invoices")
-    .select(`
-      *,
-      supplier:suppliers(*)
-    `)
-    .order("created_at", { ascending: false })
+  try {
+    const { data, error } = await supabase
+      .from("invoices")
+      .select(`
+        *,
+        supplier:suppliers(*)
+      `)
+      .order("created_at", { ascending: false })
 
-  if (error) {
-    console.error("Error fetching invoices:", error)
+    if (error) {
+      console.error("Error fetching invoices:", error)
+      throw new Error(`Failed to fetch invoices: ${error.message}`)
+    }
+
+    return data || []
+  } catch (error) {
+    console.error("getInvoices error:", error)
     throw error
   }
-
-  return data || []
 }
 
 export async function getInvoiceById(id: string): Promise<Invoice | null> {
-  const { data, error } = await supabase
-    .from("invoices")
-    .select(`
-      *,
-      supplier:suppliers(*),
-      items:invoice_items(*)
-    `)
-    .eq("id", id)
-    .single()
+  try {
+    const { data, error } = await supabase
+      .from("invoices")
+      .select(`
+        *,
+        supplier:suppliers(*),
+        items:invoice_items(
+          *,
+          product:products(*)
+        )
+      `)
+      .eq("id", id)
+      .single()
 
-  if (error) {
-    console.error("Error fetching invoice:", error)
+    if (error) {
+      console.error("Error fetching invoice:", error)
+      throw new Error(`Failed to fetch invoice: ${error.message}`)
+    }
+
+    return data
+  } catch (error) {
+    console.error("getInvoiceById error:", error)
     throw error
   }
-
-  return data
 }
 
 export async function createInvoice(invoiceData: {
+  supplier_code: string
   invoice_number: string
-  supplier_id: string
   invoice_date: string
-  due_date?: string
-  subtotal: number
-  tax_amount: number
-  discount_amount: number
-  total_amount: number
-  status: string
-  notes?: string
-  created_by?: string
-  items: {
-    product_id: string
+  items: Array<{
     product_code: string
-    product_name: string
     quantity: number
     unit_price: number
-    line_total: number
-    notes?: string
-  }[]
+  }>
 }): Promise<Invoice> {
   try {
+    // Calculate total amount
+    const total_amount = invoiceData.items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0)
+
     // Create the invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
       .insert({
+        supplier_code: invoiceData.supplier_code,
         invoice_number: invoiceData.invoice_number,
-        supplier_id: invoiceData.supplier_id,
         invoice_date: invoiceData.invoice_date,
-        due_date: invoiceData.due_date,
-        subtotal: invoiceData.subtotal,
-        tax_amount: invoiceData.tax_amount,
-        discount_amount: invoiceData.discount_amount,
-        total_amount: invoiceData.total_amount,
-        status: invoiceData.status,
-        notes: invoiceData.notes,
-        created_by: invoiceData.created_by || "system",
+        total_amount,
+        status: "pending",
       })
       .select()
       .single()
 
     if (invoiceError) {
       console.error("Error creating invoice:", invoiceError)
-      throw invoiceError
+      throw new Error(`Failed to create invoice: ${invoiceError.message}`)
     }
 
     // Create invoice items
-    if (invoiceData.items && invoiceData.items.length > 0) {
-      const itemsToInsert = invoiceData.items.map((item) => ({
-        invoice_id: invoice.id,
-        product_id: item.product_id,
-        product_code: item.product_code,
-        product_name: item.product_name,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        line_total: item.line_total,
-        notes: item.notes,
-      }))
+    const invoiceItems = invoiceData.items.map((item) => ({
+      invoice_id: invoice.id,
+      product_code: item.product_code,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      total_price: item.quantity * item.unit_price,
+    }))
 
-      const { error: itemsError } = await supabase.from("invoice_items").insert(itemsToInsert)
+    const { error: itemsError } = await supabase.from("invoice_items").insert(invoiceItems)
 
-      if (itemsError) {
-        console.error("Error creating invoice items:", itemsError)
-        throw itemsError
-      }
+    if (itemsError) {
+      console.error("Error creating invoice items:", itemsError)
+      throw new Error(`Failed to create invoice items: ${itemsError.message}`)
     }
 
     return invoice
   } catch (error) {
-    console.error("Error in createInvoice:", error)
+    console.error("createInvoice error:", error)
     throw error
   }
 }
 
-export async function getDashboardStats() {
+export async function getDashboardStats(): Promise<DashboardStats> {
   try {
-    const { data: invoices, error } = await supabase.from("invoices").select("total_amount, status")
+    // Get total invoices
+    const { count: totalInvoices, error: invoicesError } = await supabase
+      .from("invoices")
+      .select("*", { count: "exact", head: true })
 
-    if (error) throw error
+    if (invoicesError) {
+      console.error("Error counting invoices:", invoicesError)
+      throw new Error(`Failed to count invoices: ${invoicesError.message}`)
+    }
 
-    const totalInvoices = invoices?.length || 0
-    const totalAmount = invoices?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0
-    const paidInvoices = invoices?.filter((inv) => inv.status === "paid").length || 0
-    const pendingInvoices = invoices?.filter((inv) => inv.status === "pending").length || 0
+    // Get total amount
+    const { data: amountData, error: amountError } = await supabase.from("invoices").select("total_amount")
+
+    if (amountError) {
+      console.error("Error fetching amounts:", amountError)
+      throw new Error(`Failed to fetch amounts: ${amountError.message}`)
+    }
+
+    const totalAmount = amountData?.reduce((sum, invoice) => sum + (invoice.total_amount || 0), 0) || 0
+
+    // Get pending invoices
+    const { count: pendingInvoices, error: pendingError } = await supabase
+      .from("invoices")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
+
+    if (pendingError) {
+      console.error("Error counting pending invoices:", pendingError)
+      throw new Error(`Failed to count pending invoices: ${pendingError.message}`)
+    }
+
+    // Get total suppliers
+    const { count: totalSuppliers, error: suppliersError } = await supabase
+      .from("suppliers")
+      .select("*", { count: "exact", head: true })
+
+    if (suppliersError) {
+      console.error("Error counting suppliers:", suppliersError)
+      throw new Error(`Failed to count suppliers: ${suppliersError.message}`)
+    }
 
     return {
-      totalInvoices,
-      totalAmount,
-      paidInvoices,
-      pendingInvoices,
+      totalInvoices: totalInvoices || 0,
+      totalAmount: totalAmount,
+      pendingInvoices: pendingInvoices || 0,
+      totalSuppliers: totalSuppliers || 0,
     }
   } catch (error) {
-    console.error("Error fetching dashboard stats:", error)
-    return {
-      totalInvoices: 0,
-      totalAmount: 0,
-      paidInvoices: 0,
-      pendingInvoices: 0,
-    }
+    console.error("getDashboardStats error:", error)
+    throw error
   }
 }
 
-/**
- * Simple object wrapper so other parts of the app can keep
- * importing { db } without refactoring.
- */
+// Export db object with all functions
 export const db = {
   getSuppliers,
   getProducts,
