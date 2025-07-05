@@ -6,11 +6,6 @@ interface DashboardStats {
   totalInvoices: number
   totalValue: number
   totalItems: number
-  monthlyStats: Array<{
-    month: string
-    invoice_count: number
-    total_amount: number
-  }>
 }
 
 export function useDashboardStats() {
@@ -42,5 +37,10 @@ export function useDashboardStats() {
     fetchStats()
   }, [])
 
-  return { stats, loading, error, refetch: fetchStats }
+  return {
+    stats,
+    loading,
+    error,
+    fetchStats,
+  }
 }

@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "./supabase-client"
+import { supabaseAdmin } from "./supabase-client"
 
 export interface Supplier {
   id: string
@@ -75,226 +75,133 @@ export interface CreateInvoiceRequest {
 }
 
 // Database operations using Supabase
-export class SupabaseDB {
-  private supabase = createServerSupabaseClient()
-
-  // Suppliers
-  async getSuppliers(): Promise<Supplier[]> {
-    const { data, error } = await this.supabase
-      .from("suppliers")
-      .select("*")
-      .eq("status", "active")
-      .order("supplier_name")
-
-    if (error) throw error
-    return data || []
-  }
-
-  async createSupplier(supplier: Omit<Supplier, "id" | "created_at" | "updated_at">): Promise<Supplier> {
-    const { data, error } = await this.supabase.from("suppliers").insert(supplier).select().single()
+export const supabaseDb = {
+  // Get all suppliers
+  async getSuppliers() {
+    const { data, error } = await supabaseAdmin.from("suppliers").select("*").order("supplier_code")
 
     if (error) throw error
     return data
-  }
+  },
 
-  // Products
-  async getProducts(): Promise<Product[]> {
-    const { data, error } = await this.supabase
-      .from("products")
-      .select("*")
-      .eq("status", "active")
-      .order("product_name")
-
-    if (error) throw error
-    return data || []
-  }
-
-  async createProduct(product: Omit<Product, "id" | "created_at" | "updated_at">): Promise<Product> {
-    const { data, error } = await this.supabase.from("products").insert(product).select().single()
+  // Get all products
+  async getProducts() {
+    const { data, error } = await supabaseAdmin.from("products").select("*").order("product_code")
 
     if (error) throw error
     return data
-  }
+  },
 
-  async getOrCreateProduct(productCode: string, productName: string, unitPrice: number): Promise<Product> {
-    // Try to find existing product
-    const { data: existingProduct } = await this.supabase
-      .from("products")
-      .select("*")
-      .eq("product_code", productCode)
-      .single()
-
-    if (existingProduct) {
-      return existingProduct
-    }
-
-    // Create new product
-    return this.createProduct({
-      product_code: productCode,
-      product_name: productName,
-      base_price: unitPrice,
-      category: "Electronics",
-      unit: "pcs",
-      status: "active",
-    })
-  }
-
-  // Invoices
-  async getInvoices(): Promise<Invoice[]> {
-    const { data, error } = await this.supabase
+  // Get all invoices with supplier info
+  async getInvoices() {
+    const { data, error } = await supabaseAdmin
       .from("invoices")
       .select(`
         *,
         suppliers (
-          supplier_code,
           supplier_name
         )
       `)
-      .order("invoice_date", { ascending: false })
       .order("created_at", { ascending: false })
 
     if (error) throw error
-
-    return (data || []).map((invoice: any) => ({
+    return data?.map((invoice) => ({
       ...invoice,
-      supplier_code: invoice.suppliers?.supplier_code,
-      supplier_name: invoice.suppliers?.supplier_name,
+      supplier_name: invoice.suppliers?.supplier_name || "Unknown",
     }))
-  }
+  },
 
-  async getInvoiceById(id: string): Promise<Invoice | null> {
-    const { data, error } = await this.supabase
+  // Get invoice by ID with items
+  async getInvoiceById(id: string) {
+    const { data: invoice, error: invoiceError } = await supabaseAdmin
       .from("invoices")
       .select(`
         *,
         suppliers (
-          supplier_code,
-          supplier_name,
-          address,
-          phone,
-          email
-        ),
-        invoice_items (
-          id,
-          product_code,
-          product_name,
-          quantity,
-          unit_price,
-          line_total,
-          notes
+          supplier_name
         )
       `)
       .eq("id", id)
       .single()
 
-    if (error) throw error
-    if (!data) return null
+    if (invoiceError) throw invoiceError
+
+    const { data: items, error: itemsError } = await supabaseAdmin
+      .from("invoice_items")
+      .select(`
+        *,
+        products (
+          product_name
+        )
+      `)
+      .eq("invoice_id", id)
+      .order("id")
+
+    if (itemsError) throw itemsError
 
     return {
-      ...data,
-      supplier_code: data.suppliers?.supplier_code,
-      supplier_name: data.suppliers?.supplier_name,
-      items: data.invoice_items || [],
+      ...invoice,
+      supplier_name: invoice.suppliers?.supplier_name || "Unknown",
+      items:
+        items?.map((item) => ({
+          ...item,
+          product_name: item.products?.product_name || item.product_code,
+        })) || [],
     }
-  }
+  },
 
-  async createInvoice(invoiceData: CreateInvoiceRequest): Promise<Invoice> {
-    // Get supplier
-    const { data: supplier, error: supplierError } = await this.supabase
-      .from("suppliers")
-      .select("id")
-      .eq("supplier_code", invoiceData.supplier_code)
-      .eq("status", "active")
-      .single()
+  // Create new invoice
+  async createInvoice(invoiceData: any) {
+    const { items, ...invoice } = invoiceData
 
-    if (supplierError || !supplier) {
-      throw new Error(`Supplier with code '${invoiceData.supplier_code}' not found or inactive`)
-    }
-
-    // Calculate total
-    const total_amount = invoiceData.items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0)
-
-    // Create invoice
-    const { data: invoice, error: invoiceError } = await this.supabase
+    // Insert invoice
+    const { data: newInvoice, error: invoiceError } = await supabaseAdmin
       .from("invoices")
-      .insert({
-        invoice_number: invoiceData.invoice_number,
-        supplier_id: supplier.id,
-        invoice_date: invoiceData.invoice_date,
-        total_amount,
-        notes: invoiceData.notes,
-        created_by: invoiceData.created_by || "system",
-      })
+      .insert([invoice])
       .select()
       .single()
 
     if (invoiceError) throw invoiceError
 
-    // Create invoice items
-    const invoiceItems = []
-    for (const item of invoiceData.items) {
-      const product = await this.getOrCreateProduct(item.product_code, item.product_name, item.unit_price)
+    // Insert invoice items
+    if (items && items.length > 0) {
+      const invoiceItems = items.map((item: any) => ({
+        invoice_id: newInvoice.id,
+        product_code: item.product_code,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        line_total: item.quantity * item.unit_price,
+      }))
 
-      const { data: invoiceItem, error: itemError } = await this.supabase
-        .from("invoice_items")
-        .insert({
-          invoice_id: invoice.id,
-          product_id: product.id,
-          product_code: item.product_code,
-          product_name: item.product_name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          line_total: item.quantity * item.unit_price,
-        })
-        .select()
-        .single()
+      const { error: itemsError } = await supabaseAdmin.from("invoice_items").insert(invoiceItems)
 
-      if (itemError) throw itemError
-      invoiceItems.push(invoiceItem)
+      if (itemsError) throw itemsError
     }
 
-    return {
-      ...invoice,
-      items: invoiceItems,
-    }
-  }
+    return newInvoice
+  },
 
-  // Dashboard stats
+  // Get dashboard stats
   async getDashboardStats() {
-    // Get total invoices
-    const { count: totalInvoices } = await this.supabase.from("invoices").select("*", { count: "exact", head: true })
+    const [invoicesResult, itemsResult] = await Promise.all([
+      supabaseAdmin.from("invoices").select("total_amount"),
+      supabaseAdmin.from("invoice_items").select("quantity"),
+    ])
 
-    // Get total value
-    const { data: totalValueData } = await this.supabase.from("invoices").select("total_amount")
+    if (invoicesResult.error) throw invoicesResult.error
+    if (itemsResult.error) throw itemsResult.error
 
-    const totalValue = totalValueData?.reduce((sum, invoice) => sum + Number(invoice.total_amount), 0) || 0
-
-    // Get total items
-    const { count: totalItems } = await this.supabase.from("invoice_items").select("*", { count: "exact", head: true })
-
-    // Get monthly stats
-    const { data: monthlyStats } = await this.supabase
-      .from("invoices")
-      .select("invoice_date, total_amount")
-      .gte("invoice_date", new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0])
-
-    const monthlyStatsGrouped = monthlyStats?.reduce((acc: any, invoice) => {
-      const month = invoice.invoice_date.substring(0, 7) // YYYY-MM
-      if (!acc[month]) {
-        acc[month] = { month, invoice_count: 0, total_amount: 0 }
-      }
-      acc[month].invoice_count++
-      acc[month].total_amount += Number(invoice.total_amount)
-      return acc
-    }, {})
+    const totalInvoices = invoicesResult.data?.length || 0
+    const totalValue = invoicesResult.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0
+    const totalItems = itemsResult.data?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
 
     return {
-      totalInvoices: totalInvoices || 0,
+      totalInvoices,
       totalValue,
-      totalItems: totalItems || 0,
-      monthlyStats: Object.values(monthlyStatsGrouped || {}).slice(0, 6),
+      totalItems,
     }
-  }
+  },
 }
 
-export const db = new SupabaseDB()
+// Export as db for compatibility
+export const db = supabaseDb
