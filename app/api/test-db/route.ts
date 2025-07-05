@@ -5,29 +5,30 @@ export async function GET() {
   try {
     const result = await testSupabaseConnection()
 
-    if (!result.success) {
+    if (result.success) {
+      return NextResponse.json({
+        success: true,
+        message: result.message,
+        timestamp: new Date().toISOString(),
+      })
+    } else {
       return NextResponse.json(
         {
           success: false,
-          error: "Supabase connection failed",
-          details: result.error,
+          error: result.error,
+          timestamp: new Date().toISOString(),
         },
         { status: 500 },
       )
     }
-
-    return NextResponse.json({
-      success: true,
-      message: "Supabase connection verified successfully",
-      timestamp: new Date().toISOString(),
-    })
   } catch (error) {
     console.error("Database test error:", error)
     return NextResponse.json(
       {
         success: false,
-        error: "Database test failed",
+        error: "Database connection test failed",
         details: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     )

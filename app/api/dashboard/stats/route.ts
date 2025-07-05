@@ -1,21 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabaseDb } from "@/lib/supabase-db"
+import { getDashboardStats, createInvoice } from "@/lib/supabase-db"
 import type { CreateInvoiceRequest } from "@/lib/supabase-db"
 
 export async function GET() {
   try {
-    const stats = await supabaseDb.getDashboardStats()
-
-    return NextResponse.json({
-      success: true,
-      data: stats,
-    })
+    const stats = await getDashboardStats()
+    return NextResponse.json({ success: true, data: stats })
   } catch (error) {
     console.error("Error fetching dashboard stats:", error)
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to fetch dashboard stats",
+        error: "Failed to fetch dashboard statistics",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     )
@@ -65,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
     // --- Akhir Validasi ---
 
-    const invoice = await supabaseDb.createInvoice(body)
+    const invoice = await createInvoice(body)
 
     return NextResponse.json({
       success: true,

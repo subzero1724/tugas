@@ -1,207 +1,298 @@
-import { supabaseAdmin } from "./supabase-client"
+import { supabase, createServerSupabaseClient } from "./supabase-client"
 
 export interface Supplier {
-  id: string
+  id: number
   supplier_code: string
   supplier_name: string
-  address?: string
+  contact_person?: string
   phone?: string
   email?: string
-  contact_person?: string
-  status: "active" | "inactive"
+  address?: string
+  city?: string
+  status: string
   created_at: string
   updated_at: string
 }
 
 export interface Product {
-  id: string
+  id: number
   product_code: string
   product_name: string
+  description?: string
   category?: string
   unit: string
-  base_price: number
-  description?: string
-  status: "active" | "inactive"
+  unit_price: number
+  stock_quantity: number
+  supplier_code?: string
+  status: string
   created_at: string
   updated_at: string
 }
 
 export interface Invoice {
-  id: string
+  id: number
   invoice_number: string
-  supplier_id: string
-  supplier_code?: string
-  supplier_name?: string
+  supplier_code: string
   invoice_date: string
-  due_date?: string
-  subtotal: number
-  tax_amount: number
-  discount_amount: number
   total_amount: number
-  status: "draft" | "pending" | "approved" | "paid" | "cancelled"
+  status: string
+  payment_status?: string
   notes?: string
   created_by?: string
   created_at: string
   updated_at: string
+  supplier?: Supplier
   items?: InvoiceItem[]
 }
 
 export interface InvoiceItem {
-  id: string
-  invoice_id: string
-  product_id: string
+  id: number
+  invoice_id: number
   product_code: string
-  product_name: string
   quantity: number
   unit_price: number
   line_total: number
   notes?: string
-  created_at: string
-  updated_at: string
+  product?: Product
 }
 
-export interface CreateInvoiceRequest {
-  invoice_number: string
+export interface CreateInvoiceData {
   supplier_code: string
+  invoice_number: string
   invoice_date: string
+  total_amount: number
+  status?: string
+  notes?: string
   items: {
     product_code: string
-    product_name: string
     quantity: number
     unit_price: number
+    line_total: number
   }[]
-  notes?: string
-  created_by?: string
 }
 
-// Database operations using Supabase
-export const supabaseDb = {
-  // Get all suppliers
-  async getSuppliers() {
-    const { data, error } = await supabaseAdmin.from("suppliers").select("*").order("supplier_code")
+export interface DashboardStats {
+  totalInvoices: number
+  totalAmount: number
+  pendingInvoices: number
+  approvedInvoices: number
+  recentInvoices: Invoice[]
+}
 
-    if (error) throw error
-    return data
-  },
+// Get all suppliers
+export async function getSuppliers(): Promise<Supplier[]> {
+  const { data, error } = await supabase.from("suppliers").select("*").eq("status", "active").order("supplier_name")
 
-  // Get all products
-  async getProducts() {
-    const { data, error } = await supabaseAdmin.from("products").select("*").order("product_code")
+  if (error) {
+    console.error("Error fetching suppliers:", error)
+    throw new Error(error.message)
+  }
 
-    if (error) throw error
-    return data
-  },
+  return data || []
+}
 
-  // Get all invoices with supplier info
-  async getInvoices() {
-    const { data, error } = await supabaseAdmin
+// Get all products
+export async function getProducts(): Promise<Product[]> {
+  const { data, error } = await supabase.from("products").select("*").eq("status", "active").order("product_name")
+
+  if (error) {
+    console.error("Error fetching products:", error)
+    throw new Error(error.message)
+  }
+
+  return data || []
+}
+
+// Get all invoices with supplier info
+export async function getInvoices(): Promise<Invoice[]> {
+  const { data, error } = await supabase
+    .from("invoices")
+    .select(`
+      *,
+      suppliers!invoices_supplier_code_fkey (
+        id,
+        supplier_code,
+        supplier_name,
+        contact_person
+      )
+    `)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("Error fetching invoices:", error)
+    throw new Error(error.message)
+  }
+
+  return (
+    data?.map((invoice) => ({
+      ...invoice,
+      supplier: invoice.suppliers,
+    })) || []
+  )
+}
+
+// Get invoice by ID with items
+export async function getInvoiceById(id: number): Promise<Invoice | null> {
+  const { data, error } = await supabase
+    .from("invoices")
+    .select(`
+      *,
+      suppliers!invoices_supplier_code_fkey (
+        id,
+        supplier_code,
+        supplier_name,
+        contact_person,
+        phone,
+        email,
+        address
+      ),
+      invoice_items (
+        *,
+        products!invoice_items_product_code_fkey (
+          id,
+          product_code,
+          product_name,
+          unit
+        )
+      )
+    `)
+    .eq("id", id)
+    .single()
+
+  if (error) {
+    console.error("Error fetching invoice:", error)
+    throw new Error(error.message)
+  }
+
+  if (!data) return null
+
+  return {
+    ...data,
+    supplier: data.suppliers,
+    items:
+      data.invoice_items?.map((item: any) => ({
+        ...item,
+        product: item.products,
+      })) || [],
+  }
+}
+
+// Create new invoice
+export async function createInvoice(invoiceData: CreateInvoiceData): Promise<Invoice> {
+  const supabaseAdmin = createServerSupabaseClient()
+
+  try {
+    // Insert invoice
+    const { data: invoice, error: invoiceError } = await supabaseAdmin
+      .from("invoices")
+      .insert({
+        invoice_number: invoiceData.invoice_number,
+        supplier_code: invoiceData.supplier_code,
+        invoice_date: invoiceData.invoice_date,
+        total_amount: invoiceData.total_amount,
+        status: invoiceData.status || "pending",
+        notes: invoiceData.notes,
+        created_by: "system",
+      })
+      .select()
+      .single()
+
+    if (invoiceError) {
+      console.error("Error creating invoice:", invoiceError)
+      throw new Error(invoiceError.message)
+    }
+
+    // Insert invoice items
+    if (invoiceData.items && invoiceData.items.length > 0) {
+      const itemsToInsert = invoiceData.items.map((item) => ({
+        invoice_id: invoice.id,
+        product_code: item.product_code,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        line_total: item.line_total,
+      }))
+
+      const { error: itemsError } = await supabaseAdmin.from("invoice_items").insert(itemsToInsert)
+
+      if (itemsError) {
+        console.error("Error creating invoice items:", itemsError)
+        // Rollback invoice if items failed
+        await supabaseAdmin.from("invoices").delete().eq("id", invoice.id)
+        throw new Error(itemsError.message)
+      }
+    }
+
+    return invoice
+  } catch (error) {
+    console.error("Error in createInvoice:", error)
+    throw error
+  }
+}
+
+// Get dashboard statistics
+export async function getDashboardStats(): Promise<DashboardStats> {
+  try {
+    // Get total invoices count
+    const { count: totalInvoices } = await supabase.from("invoices").select("*", { count: "exact", head: true })
+
+    // Get total amount
+    const { data: amountData } = await supabase.from("invoices").select("total_amount")
+
+    const totalAmount = amountData?.reduce((sum, invoice) => sum + (invoice.total_amount || 0), 0) || 0
+
+    // Get pending invoices count
+    const { count: pendingInvoices } = await supabase
+      .from("invoices")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
+
+    // Get approved invoices count
+    const { count: approvedInvoices } = await supabase
+      .from("invoices")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "approved")
+
+    // Get recent invoices
+    const { data: recentInvoices } = await supabase
       .from("invoices")
       .select(`
         *,
-        suppliers (
+        suppliers!invoices_supplier_code_fkey (
           supplier_name
         )
       `)
       .order("created_at", { ascending: false })
-
-    if (error) throw error
-    return data?.map((invoice) => ({
-      ...invoice,
-      supplier_name: invoice.suppliers?.supplier_name || "Unknown",
-    }))
-  },
-
-  // Get invoice by ID with items
-  async getInvoiceById(id: string) {
-    const { data: invoice, error: invoiceError } = await supabaseAdmin
-      .from("invoices")
-      .select(`
-        *,
-        suppliers (
-          supplier_name
-        )
-      `)
-      .eq("id", id)
-      .single()
-
-    if (invoiceError) throw invoiceError
-
-    const { data: items, error: itemsError } = await supabaseAdmin
-      .from("invoice_items")
-      .select(`
-        *,
-        products (
-          product_name
-        )
-      `)
-      .eq("invoice_id", id)
-      .order("id")
-
-    if (itemsError) throw itemsError
+      .limit(5)
 
     return {
-      ...invoice,
-      supplier_name: invoice.suppliers?.supplier_name || "Unknown",
-      items:
-        items?.map((item) => ({
-          ...item,
-          product_name: item.products?.product_name || item.product_code,
+      totalInvoices: totalInvoices || 0,
+      totalAmount,
+      pendingInvoices: pendingInvoices || 0,
+      approvedInvoices: approvedInvoices || 0,
+      recentInvoices:
+        recentInvoices?.map((invoice) => ({
+          ...invoice,
+          supplier: invoice.suppliers,
         })) || [],
     }
-  },
-
-  // Create new invoice
-  async createInvoice(invoiceData: any) {
-    const { items, ...invoice } = invoiceData
-
-    // Insert invoice
-    const { data: newInvoice, error: invoiceError } = await supabaseAdmin
-      .from("invoices")
-      .insert([invoice])
-      .select()
-      .single()
-
-    if (invoiceError) throw invoiceError
-
-    // Insert invoice items
-    if (items && items.length > 0) {
-      const invoiceItems = items.map((item: any) => ({
-        invoice_id: newInvoice.id,
-        product_code: item.product_code,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        line_total: item.quantity * item.unit_price,
-      }))
-
-      const { error: itemsError } = await supabaseAdmin.from("invoice_items").insert(invoiceItems)
-
-      if (itemsError) throw itemsError
-    }
-
-    return newInvoice
-  },
-
-  // Get dashboard stats
-  async getDashboardStats() {
-    const [invoicesResult, itemsResult] = await Promise.all([
-      supabaseAdmin.from("invoices").select("total_amount"),
-      supabaseAdmin.from("invoice_items").select("quantity"),
-    ])
-
-    if (invoicesResult.error) throw invoicesResult.error
-    if (itemsResult.error) throw itemsResult.error
-
-    const totalInvoices = invoicesResult.data?.length || 0
-    const totalValue = invoicesResult.data?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0
-    const totalItems = itemsResult.data?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
-
+  } catch (error) {
+    console.error("Error fetching dashboard stats:", error)
     return {
-      totalInvoices,
-      totalValue,
-      totalItems,
+      totalInvoices: 0,
+      totalAmount: 0,
+      pendingInvoices: 0,
+      approvedInvoices: 0,
+      recentInvoices: [],
     }
-  },
+  }
 }
 
-// Export as db for compatibility
-export const db = supabaseDb
+// Export db object for compatibility
+export const db = {
+  getSuppliers,
+  getProducts,
+  getInvoices,
+  getInvoiceById,
+  createInvoice,
+  getDashboardStats,
+}

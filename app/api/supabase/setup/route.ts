@@ -7,16 +7,139 @@ export async function POST() {
 
     console.log("🚀 Setting up Supabase database...")
 
-    // Check if tables exist
-    const { data: tables, error: tablesError } = await supabase
-      .from("information_schema.tables")
-      .select("table_name")
-      .eq("table_schema", "public")
-      .in("table_name", ["suppliers", "products", "invoices", "invoice_items"])
+    // Test connection first
+    const { error: connectionError } = await supabase.from("suppliers").select("count").limit(1)
 
-    if (tablesError) {
-      console.log("Tables don't exist yet, creating them...")
-      await createTables(supabase)
+    if (connectionError && connectionError.code === "42P01") {
+      // Table doesn't exist, create it
+      console.log("Creating database tables...")
+
+      // Create suppliers table
+      const { error: suppliersError } = await supabase.rpc("exec_sql", {
+        sql: `
+          CREATE TABLE IF NOT EXISTS suppliers (
+            id SERIAL PRIMARY KEY,
+            supplier_code VARCHAR(20) UNIQUE NOT NULL,
+            supplier_name VARCHAR(255) NOT NULL,
+            contact_person VARCHAR(255),
+            phone VARCHAR(50),
+            email VARCHAR(255),
+            address TEXT,
+            city VARCHAR(100),
+            status VARCHAR(20) DEFAULT 'active',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+          );
+        `,
+      })
+
+      if (suppliersError) {
+        console.error("Error creating suppliers table:", suppliersError)
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Failed to create suppliers table",
+            details: suppliersError.message,
+          },
+          { status: 500 },
+        )
+      }
+
+      // Create products table
+      const { error: productsError } = await supabase.rpc("exec_sql", {
+        sql: `
+          CREATE TABLE IF NOT EXISTS products (
+            id SERIAL PRIMARY KEY,
+            product_code VARCHAR(50) UNIQUE NOT NULL,
+            product_name VARCHAR(255) NOT NULL,
+            description TEXT,
+            category VARCHAR(100),
+            unit VARCHAR(20) DEFAULT 'pcs',
+            unit_price DECIMAL(15,2) DEFAULT 0,
+            stock_quantity INTEGER DEFAULT 0,
+            supplier_code VARCHAR(20),
+            status VARCHAR(20) DEFAULT 'active',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            FOREIGN KEY (supplier_code) REFERENCES suppliers(supplier_code)
+          );
+        `,
+      })
+
+      if (productsError) {
+        console.error("Error creating products table:", productsError)
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Failed to create products table",
+            details: productsError.message,
+          },
+          { status: 500 },
+        )
+      }
+
+      // Create invoices table
+      const { error: invoicesError } = await supabase.rpc("exec_sql", {
+        sql: `
+          CREATE TABLE IF NOT EXISTS invoices (
+            id SERIAL PRIMARY KEY,
+            invoice_number VARCHAR(50) UNIQUE NOT NULL,
+            supplier_code VARCHAR(20) NOT NULL,
+            invoice_date DATE NOT NULL,
+            total_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+            status VARCHAR(20) DEFAULT 'pending',
+            notes TEXT,
+            created_by VARCHAR(100) DEFAULT 'system',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            FOREIGN KEY (supplier_code) REFERENCES suppliers(supplier_code)
+          );
+        `,
+      })
+
+      if (invoicesError) {
+        console.error("Error creating invoices table:", invoicesError)
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Failed to create invoices table",
+            details: invoicesError.message,
+          },
+          { status: 500 },
+        )
+      }
+
+      // Create invoice_items table
+      const { error: itemsError } = await supabase.rpc("exec_sql", {
+        sql: `
+          CREATE TABLE IF NOT EXISTS invoice_items (
+            id SERIAL PRIMARY KEY,
+            invoice_id INTEGER NOT NULL,
+            product_code VARCHAR(50) NOT NULL,
+            quantity INTEGER NOT NULL,
+            unit_price DECIMAL(15,2) NOT NULL,
+            line_total DECIMAL(15,2) NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_code) REFERENCES products(product_code)
+          );
+        `,
+      })
+
+      if (itemsError) {
+        console.error("Error creating invoice_items table:", itemsError)
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Failed to create invoice_items table",
+            details: itemsError.message,
+          },
+          { status: 500 },
+        )
+      }
+
+      // Insert sample data
       await insertSampleData(supabase)
 
       return NextResponse.json({
@@ -26,22 +149,21 @@ export async function POST() {
       })
     }
 
-    if (!tables || tables.length < 4) {
-      console.log("Some tables missing, creating them...")
-      await createTables(supabase)
-      await insertSampleData(supabase)
+    // Check if we have data
+    const { data: suppliers, error: suppliersError } = await supabase.from("suppliers").select("count").limit(1)
 
-      return NextResponse.json({
-        success: true,
-        message: "Database setup completed successfully",
-        action: "created_missing_tables",
-      })
+    if (suppliersError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Database connection failed",
+          details: suppliersError.message,
+        },
+        { status: 500 },
+      )
     }
 
-    // Tables exist, check if they have data
-    const { data: supplierCount } = await supabase.from("suppliers").select("*", { count: "exact", head: true })
-
-    if (!supplierCount || supplierCount === 0) {
+    if (!suppliers || suppliers.length === 0) {
       console.log("Tables exist but no data, inserting sample data...")
       await insertSampleData(supabase)
 
@@ -70,253 +192,70 @@ export async function POST() {
   }
 }
 
-async function createTables(supabase: any) {
-  // Create suppliers table
-  await supabase.rpc("exec_sql", {
-    sql: `
-      CREATE TABLE IF NOT EXISTS suppliers (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        supplier_code VARCHAR(10) NOT NULL UNIQUE,
-        supplier_name VARCHAR(100) NOT NULL,
-        address TEXT,
-        phone VARCHAR(20),
-        email VARCHAR(100),
-        contact_person VARCHAR(100),
-        status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      );
-      
-      CREATE INDEX IF NOT EXISTS idx_suppliers_code ON suppliers(supplier_code);
-      CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(supplier_name);
-    `,
-  })
-
-  // Create products table
-  await supabase.rpc("exec_sql", {
-    sql: `
-      CREATE TABLE IF NOT EXISTS products (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        product_code VARCHAR(20) NOT NULL UNIQUE,
-        product_name VARCHAR(200) NOT NULL,
-        category VARCHAR(50) DEFAULT 'Electronics',
-        unit VARCHAR(20) DEFAULT 'pcs',
-        base_price DECIMAL(15,2) DEFAULT 0,
-        description TEXT,
-        status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      );
-      
-      CREATE INDEX IF NOT EXISTS idx_products_code ON products(product_code);
-      CREATE INDEX IF NOT EXISTS idx_products_name ON products(product_name);
-    `,
-  })
-
-  // Create invoices table
-  await supabase.rpc("exec_sql", {
-    sql: `
-      CREATE TABLE IF NOT EXISTS invoices (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        invoice_number VARCHAR(50) NOT NULL UNIQUE,
-        supplier_id UUID NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
-        invoice_date DATE NOT NULL,
-        due_date DATE,
-        subtotal DECIMAL(15,2) DEFAULT 0,
-        tax_amount DECIMAL(15,2) DEFAULT 0,
-        discount_amount DECIMAL(15,2) DEFAULT 0,
-        total_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
-        status VARCHAR(20) DEFAULT 'approved' CHECK (status IN ('draft', 'pending', 'approved', 'paid', 'cancelled')),
-        notes TEXT,
-        created_by VARCHAR(100) DEFAULT 'system',
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      );
-      
-      CREATE INDEX IF NOT EXISTS idx_invoices_number ON invoices(invoice_number);
-      CREATE INDEX IF NOT EXISTS idx_invoices_supplier ON invoices(supplier_id);
-      CREATE INDEX IF NOT EXISTS idx_invoices_date ON invoices(invoice_date);
-    `,
-  })
-
-  // Create invoice_items table
-  await supabase.rpc("exec_sql", {
-    sql: `
-      CREATE TABLE IF NOT EXISTS invoice_items (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
-        product_id UUID NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
-        product_code VARCHAR(20) NOT NULL,
-        product_name VARCHAR(200) NOT NULL,
-        quantity INTEGER NOT NULL DEFAULT 1,
-        unit_price DECIMAL(15,2) NOT NULL,
-        line_total DECIMAL(15,2) NOT NULL,
-        notes TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      );
-      
-      CREATE INDEX IF NOT EXISTS idx_invoice_items_invoice ON invoice_items(invoice_id);
-      CREATE INDEX IF NOT EXISTS idx_invoice_items_product ON invoice_items(product_id);
-    `,
-  })
-}
-
 async function insertSampleData(supabase: any) {
   // Insert suppliers
-  const { data: suppliers } = await supabase
-    .from("suppliers")
-    .upsert(
-      [
-        {
-          supplier_code: "S01",
-          supplier_name: "Hitachi",
-          address: "Jl. Industri Raya No. 123, Jakarta Timur",
-          phone: "021-1234567",
-          email: "sales@hitachi.co.id",
-          contact_person: "Budi Santoso",
-        },
-        {
-          supplier_code: "G01",
-          supplier_name: "Global Nusantara",
-          address: "Jl. Perdagangan No. 456, Surabaya",
-          phone: "031-7654321",
-          email: "info@globalnusantara.co.id",
-          contact_person: "Siti Rahayu",
-        },
-      ],
-      { onConflict: "supplier_code" },
-    )
-    .select()
+  const { error: suppliersError } = await supabase.from("suppliers").upsert(
+    [
+      {
+        supplier_code: "SUP001",
+        supplier_name: "PT Elektronik Jaya",
+        contact_person: "Budi Santoso",
+        phone: "021-1234567",
+        email: "budi@elektronikjaya.com",
+        address: "Jl. Sudirman No. 123",
+        city: "Jakarta",
+      },
+      {
+        supplier_code: "Sg01",
+        supplier_name: "Topyota",
+        contact_person: "Toyota Sales",
+        phone: "021-6789012",
+        email: "sales@topyota.com",
+        address: "Jl. Toyota No. 987",
+        city: "Jakarta",
+      },
+    ],
+    { onConflict: "supplier_code" },
+  )
+
+  if (suppliersError) {
+    console.error("Error inserting suppliers:", suppliersError)
+    throw new Error(suppliersError.message)
+  }
 
   // Insert products
-  const { data: products } = await supabase
-    .from("products")
-    .upsert(
-      [
-        {
-          product_code: "S01",
-          product_name: "RICE COOKER CC3",
-          category: "Electronics",
-          unit: "pcs",
-          base_price: 1500000,
-          description: "Rice cooker dengan kapasitas 1.8L, teknologi fuzzy logic",
-        },
-        {
-          product_code: "S02",
-          product_name: "AC SPLIT 1 PK",
-          category: "Electronics",
-          unit: "pcs",
-          base_price: 3000000,
-          description: "Air conditioner split 1 PK dengan teknologi inverter",
-        },
-        {
-          product_code: "G01",
-          product_name: "AC SPLIT ½ PK",
-          category: "Electronics",
-          unit: "pcs",
-          base_price: 2000000,
-          description: "Air conditioner split 0.5 PK hemat energi",
-        },
-        {
-          product_code: "G02",
-          product_name: "AC SPLIT 1 PK",
-          category: "Electronics",
-          unit: "pcs",
-          base_price: 3000000,
-          description: "Air conditioner split 1 PK dengan remote control",
-        },
-      ],
-      { onConflict: "product_code" },
-    )
-    .select()
+  const { error: productsError } = await supabase.from("products").upsert(
+    [
+      {
+        product_code: "LAPTOP001",
+        product_name: "Laptop Dell Inspiron 15",
+        description: "Laptop Dell Inspiron 15 inch, Intel i5, 8GB RAM, 512GB SSD",
+        category: "Komputer",
+        unit: "unit",
+        unit_price: 8500000,
+        stock_quantity: 10,
+        supplier_code: "SUP001",
+      },
+      {
+        product_code: "S21",
+        product_name: "ra",
+        description: "Sample product ra",
+        category: "Sample",
+        unit: "unit",
+        unit_price: 20,
+        stock_quantity: 100,
+        supplier_code: "Sg01",
+      },
+    ],
+    { onConflict: "product_code" },
+  )
 
-  if (suppliers && products) {
-    // Insert sample invoices
-    const hitachiSupplier = suppliers.find((s) => s.supplier_code === "S01")
-    const globalSupplier = suppliers.find((s) => s.supplier_code === "G01")
-
-    if (hitachiSupplier && globalSupplier) {
-      const { data: invoices } = await supabase
-        .from("invoices")
-        .upsert(
-          [
-            {
-              invoice_number: "778",
-              supplier_id: hitachiSupplier.id,
-              invoice_date: "2025-04-18",
-              total_amount: 4500000,
-              status: "approved",
-              created_by: "admin",
-            },
-            {
-              invoice_number: "779",
-              supplier_id: globalSupplier.id,
-              invoice_date: "2025-06-15",
-              total_amount: 5000000,
-              status: "approved",
-              created_by: "admin",
-            },
-          ],
-          { onConflict: "invoice_number" },
-        )
-        .select()
-
-      if (invoices) {
-        // Insert invoice items
-        const invoice778 = invoices.find((i) => i.invoice_number === "778")
-        const invoice779 = invoices.find((i) => i.invoice_number === "779")
-
-        const riceCooker = products.find((p) => p.product_code === "S01")
-        const acSplit1pk = products.find((p) => p.product_code === "S02")
-        const acSplitHalf = products.find((p) => p.product_code === "G01")
-        const acSplit1pkGlobal = products.find((p) => p.product_code === "G02")
-
-        if (invoice778 && invoice779 && riceCooker && acSplit1pk && acSplitHalf && acSplit1pkGlobal) {
-          await supabase.from("invoice_items").upsert([
-            // Invoice 778 items
-            {
-              invoice_id: invoice778.id,
-              product_id: riceCooker.id,
-              product_code: "S01",
-              product_name: "RICE COOKER CC3",
-              quantity: 1,
-              unit_price: 1500000,
-              line_total: 1500000,
-            },
-            {
-              invoice_id: invoice778.id,
-              product_id: acSplit1pk.id,
-              product_code: "S02",
-              product_name: "AC SPLIT 1 PK",
-              quantity: 1,
-              unit_price: 3000000,
-              line_total: 3000000,
-            },
-            // Invoice 779 items
-            {
-              invoice_id: invoice779.id,
-              product_id: acSplitHalf.id,
-              product_code: "G01",
-              product_name: "AC SPLIT ½ PK",
-              quantity: 1,
-              unit_price: 2000000,
-              line_total: 2000000,
-            },
-            {
-              invoice_id: invoice779.id,
-              product_id: acSplit1pkGlobal.id,
-              product_code: "G02",
-              product_name: "AC SPLIT 1 PK",
-              quantity: 1,
-              unit_price: 3000000,
-              line_total: 3000000,
-            },
-          ])
-        }
-      }
-    }
+  if (productsError) {
+    console.error("Error inserting products:", productsError)
+    throw new Error(productsError.message)
   }
+
+  console.log("Sample data inserted successfully")
 }
 
 export async function GET() {
