@@ -7,27 +7,28 @@ export async function GET() {
     const { data, error } = await supabaseAdmin.from("suppliers").select("count", { count: "exact", head: true })
 
     if (error) {
+      console.error("Database connection error:", error)
       return NextResponse.json({
         success: false,
-        connected: false,
-        error: error.message,
-        timestamp: new Date().toISOString(),
+        error: "Database connection failed",
+        details: error.message,
       })
     }
 
     return NextResponse.json({
       success: true,
-      connected: true,
-      message: "Supabase connection successful",
+      message: "Database connection successful",
       timestamp: new Date().toISOString(),
-      suppliersCount: data || 0,
     })
   } catch (error) {
-    return NextResponse.json({
-      success: false,
-      connected: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-      timestamp: new Date().toISOString(),
-    })
+    console.error("Database test error:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Database test failed",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

@@ -3,16 +3,16 @@ import { getInvoices, createInvoice, type CreateInvoiceData } from "@/lib/supaba
 
 export async function GET() {
   try {
-    console.log("Fetching invoices...")
+    console.log("API: Fetching invoices...")
     const invoices = await getInvoices()
-    console.log("Invoices fetched:", invoices.length)
+    console.log("API: Invoices fetched:", invoices.length)
 
     return NextResponse.json({
       success: true,
       data: invoices,
     })
   } catch (error) {
-    console.error("Error fetching invoices:", error)
+    console.error("API: Error fetching invoices:", error)
     return NextResponse.json(
       {
         success: false,
@@ -27,7 +27,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    console.log("Received invoice data:", body)
+    console.log("API: Received invoice data:", body)
 
     // Validate required fields
     if (!body.supplier_code || !body.invoice_number || !body.invoice_date) {
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       })),
     }
 
-    console.log("Processed invoice data:", invoiceData)
+    console.log("API: Processed invoice data:", invoiceData)
 
     const invoice = await createInvoice(invoiceData)
 
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       message: "Invoice created successfully",
     })
   } catch (error) {
-    console.error("Error creating invoice:", error)
+    console.error("API: Error creating invoice:", error)
     return NextResponse.json(
       {
         success: false,

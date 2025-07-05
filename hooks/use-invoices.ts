@@ -13,11 +13,11 @@ export function useInvoices() {
       setLoading(true)
       setError(null)
 
-      console.log("Fetching invoices...")
+      console.log("Hook: Fetching invoices...")
       const response = await fetch("/api/invoices")
       const result = await response.json()
 
-      console.log("Invoices response:", result)
+      console.log("Hook: Invoices response:", result)
 
       if (result.success) {
         setInvoices(result.data)
@@ -26,7 +26,7 @@ export function useInvoices() {
         setError(result.error || "Failed to fetch invoices")
       }
     } catch (err) {
-      console.error("Error fetching invoices:", err)
+      console.error("Hook: Error fetching invoices:", err)
       setError("Network error occurred")
     } finally {
       setLoading(false)
@@ -35,7 +35,7 @@ export function useInvoices() {
 
   const createInvoice = async (invoiceData: any) => {
     try {
-      console.log("Creating invoice:", invoiceData)
+      console.log("Hook: Creating invoice:", invoiceData)
 
       const response = await fetch("/api/invoices", {
         method: "POST",
@@ -46,7 +46,7 @@ export function useInvoices() {
       })
 
       const result = await response.json()
-      console.log("Create invoice response:", result)
+      console.log("Hook: Create invoice response:", result)
 
       if (result.success) {
         await fetchInvoices() // Refresh the list
@@ -55,7 +55,7 @@ export function useInvoices() {
         return { success: false, error: result.error }
       }
     } catch (err) {
-      console.error("Error creating invoice:", err)
+      console.error("Hook: Error creating invoice:", err)
       return { success: false, error: "Network error occurred" }
     }
   }
@@ -71,7 +71,7 @@ export function useInvoices() {
         return { success: false, error: result.error }
       }
     } catch (err) {
-      console.error("Error fetching invoice:", err)
+      console.error("Hook: Error fetching invoice:", err)
       return { success: false, error: "Network error occurred" }
     }
   }

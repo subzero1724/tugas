@@ -139,31 +139,43 @@ export async function getProducts(): Promise<Product[]> {
 // Get all invoices with supplier info
 export async function getInvoices(): Promise<Invoice[]> {
   try {
-    const { data, error } = await supabaseAdmin
+    console.log("Starting getInvoices...")
+
+    // First, get invoices
+    const { data: invoicesData, error: invoicesError } = await supabaseAdmin
       .from("invoices")
-      .select(`
-        *,
-        suppliers!invoices_supplier_code_fkey (
-          id,
-          supplier_code,
-          supplier_name,
-          contact_person
-        )
-      `)
+      .select("*")
       .order("created_at", { ascending: false })
 
-    if (error) {
-      console.error("Error fetching invoices:", error)
-      throw new Error(error.message)
+    if (invoicesError) {
+      console.error("Error fetching invoices:", invoicesError)
+      throw new Error(invoicesError.message)
     }
 
-    return (
-      data?.map((invoice) => ({
-        ...invoice,
-        supplier_name: invoice.suppliers?.supplier_name || invoice.supplier_code,
-        supplier: invoice.suppliers,
-      })) || []
+    console.log("Raw invoices data:", invoicesData)
+
+    if (!invoicesData || invoicesData.length === 0) {
+      return []
+    }
+
+    // Get suppliers for each invoice
+    const invoicesWithSuppliers = await Promise.all(
+      invoicesData.map(async (invoice) => {
+        const { data: supplierData } = await supabaseAdmin
+          .from("suppliers")
+          .select("supplier_name")
+          .eq("supplier_code", invoice.supplier_code)
+          .single()
+
+        return {
+          ...invoice,
+          supplier_name: supplierData?.supplier_name || invoice.supplier_code,
+        }
+      }),
     )
+
+    console.log("Invoices with suppliers:", invoicesWithSuppliers)
+    return invoicesWithSuppliers
   } catch (error) {
     console.error("Error in getInvoices:", error)
     throw error

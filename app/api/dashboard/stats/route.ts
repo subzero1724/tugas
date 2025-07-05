@@ -4,16 +4,16 @@ import type { CreateInvoiceRequest } from "@/lib/supabase-db"
 
 export async function GET() {
   try {
-    console.log("Fetching dashboard stats...")
+    console.log("API: Fetching dashboard stats...")
     const stats = await getDashboardStats()
-    console.log("Stats fetched:", stats)
+    console.log("API: Stats fetched:", stats)
 
     return NextResponse.json({
       success: true,
       data: stats,
     })
   } catch (error) {
-    console.error("Error fetching dashboard stats:", error)
+    console.error("API: Error fetching dashboard stats:", error)
     return NextResponse.json(
       {
         success: false,
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       message: "Faktur berhasil dibuat!",
     })
   } catch (error) {
-    console.error("Error creating invoice:", error)
+    console.error("API: Error creating invoice:", error)
 
     // Handle duplikat nomor faktur dengan lebih baik
     if (
