@@ -6,13 +6,26 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const id = Number.parseInt(params.id)
 
     if (isNaN(id)) {
-      return NextResponse.json({ success: false, error: "Invalid invoice ID" }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid invoice ID",
+        },
+        { status: 400 },
+      )
     }
 
+    console.log("API: Fetching invoice by ID:", id)
     const invoice = await getInvoiceById(id)
 
     if (!invoice) {
-      return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invoice not found",
+        },
+        { status: 404 },
+      )
     }
 
     return NextResponse.json({
@@ -20,7 +33,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       data: invoice,
     })
   } catch (error) {
-    console.error("Error fetching invoice:", error)
+    console.error("API: Error fetching invoice:", error)
     return NextResponse.json(
       {
         success: false,

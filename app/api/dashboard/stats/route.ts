@@ -6,7 +6,7 @@ export async function GET() {
   try {
     console.log("API: Fetching dashboard stats...")
     const stats = await getDashboardStats()
-    console.log("API: Stats fetched:", stats)
+    console.log("API: Dashboard stats:", stats)
 
     return NextResponse.json({
       success: true,

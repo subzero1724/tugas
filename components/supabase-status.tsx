@@ -1,152 +1,125 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, XCircle, RefreshCw, Database, Settings } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { CheckCircle, XCircle, Settings, RefreshCw } from "lucide-react"
 
 export function SupabaseStatus() {
-  const [status, setStatus] = useState<{
-    connected: boolean
-    loading: boolean
-    error: string | null
-    lastChecked: string | null
-    setupLoading: boolean
-  }>({
-    connected: false,
-    loading: true,
-    error: null,
-    lastChecked: null,
-    setupLoading: false,
-  })
+  const [status, setStatus] = useState<"checking" | "connected" | "failed">("checking")
+  const [lastChecked, setLastChecked] = useState<string>("")
+  const [isSettingUp, setIsSettingUp] = useState(false)
 
-  const checkDatabaseStatus = async () => {
-    setStatus((prev) => ({ ...prev, loading: true, error: null }))
-
+  const checkConnection = async () => {
     try {
+      setStatus("checking")
       const response = await fetch("/api/test-db")
       const result = await response.json()
 
-      setStatus((prev) => ({
-        ...prev,
-        connected: result.success,
-        loading: false,
-        error: result.success ? null : result.error,
-        lastChecked: new Date().toLocaleTimeString("id-ID"),
-      }))
+      if (result.success) {
+        setStatus("connected")
+      } else {
+        setStatus("failed")
+      }
     } catch (error) {
-      setStatus((prev) => ({
-        ...prev,
-        connected: false,
-        loading: false,
-        error: "Failed to connect to Supabase API",
-        lastChecked: new Date().toLocaleTimeString("id-ID"),
-      }))
+      console.error("Connection check failed:", error)
+      setStatus("failed")
+    } finally {
+      setLastChecked(new Date().toLocaleTimeString("id-ID"))
     }
   }
 
   const setupDatabase = async () => {
-    setStatus((prev) => ({ ...prev, setupLoading: true }))
-
     try {
+      setIsSettingUp(true)
       const response = await fetch("/api/supabase/setup", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
       })
-
       const result = await response.json()
 
       if (result.success) {
-        // Recheck connection after setup
-        await checkDatabaseStatus()
-        alert(`Setup successful: ${result.message}`)
+        await checkConnection()
+        alert("Database setup berhasil!")
       } else {
-        alert(`Setup failed: ${result.error}`)
+        alert("Database setup gagal: " + result.error)
       }
     } catch (error) {
-      alert("Setup failed: Network error occurred")
+      console.error("Setup failed:", error)
+      alert("Database setup gagal: " + (error instanceof Error ? error.message : "Unknown error"))
     } finally {
-      setStatus((prev) => ({ ...prev, setupLoading: false }))
+      setIsSettingUp(false)
     }
   }
 
   useEffect(() => {
-    checkDatabaseStatus()
+    checkConnection()
   }, [])
 
-  if (status.loading) {
+  if (status === "checking") {
     return (
-      <Alert className="mb-4 border-blue-200 bg-blue-50">
+      <Alert className="mb-6 border-blue-200 bg-blue-50">
         <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
-        <AlertDescription className="text-blue-800">Checking Supabase connection...</AlertDescription>
+        <AlertDescription className="text-blue-800">Memeriksa koneksi database...</AlertDescription>
       </Alert>
     )
   }
 
-  if (!status.connected) {
+  if (status === "connected") {
     return (
-      <Alert className="mb-4 border-red-200 bg-red-50">
-        <XCircle className="h-4 w-4 text-red-600" />
-        <AlertDescription className="text-red-800">
+      <Alert className="mb-6 border-green-200 bg-green-50">
+        <CheckCircle className="h-4 w-4 text-green-600" />
+        <AlertDescription className="text-green-800">
           <div className="flex justify-between items-center">
-            <div>
-              <strong>Supabase Connection Failed:</strong> {status.error}
-              {status.lastChecked && <div className="text-sm mt-1">Last checked: {status.lastChecked}</div>}
-              <div className="text-sm mt-2 text-red-600">
-                The database might need to be set up. Click "Setup Database" to create tables and sample data.
-              </div>
-            </div>
-            <div className="flex space-x-2 ml-4">
+            <span>Supabase Connected Successfully</span>
+            <div className="flex gap-2">
               <Button
-                onClick={setupDatabase}
-                disabled={status.setupLoading}
+                onClick={checkConnection}
                 variant="outline"
                 size="sm"
-                className="border-red-300 text-red-700 hover:bg-red-100 bg-transparent"
+                className="text-green-700 border-green-300 hover:bg-green-100 bg-transparent"
               >
-                {status.setupLoading ? (
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Settings className="h-4 w-4 mr-2" />
-                )}
-                Setup Database
-              </Button>
-              <Button
-                onClick={checkDatabaseStatus}
-                variant="outline"
-                size="sm"
-                className="border-red-300 text-red-700 hover:bg-red-100 bg-transparent"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Test Again
               </Button>
             </div>
           </div>
+          <div className="text-xs text-green-600 mt-1">Last checked: {lastChecked}</div>
         </AlertDescription>
       </Alert>
     )
   }
 
   return (
-    <Alert className="mb-4 border-green-200 bg-green-50">
-      <CheckCircle className="h-4 w-4 text-green-600" />
-      <AlertDescription className="text-green-800">
+    <Alert className="mb-6 border-red-200 bg-red-50">
+      <XCircle className="h-4 w-4 text-red-600" />
+      <AlertDescription className="text-red-800">
         <div className="flex justify-between items-center">
-          <div>
-            <strong>Supabase Connected Successfully</strong>
-            {status.lastChecked && <div className="text-sm mt-1">Last checked: {status.lastChecked}</div>}
+          <span>Supabase Connection Failed: Supabase connection failed</span>
+          <div className="flex gap-2">
+            <Button
+              onClick={setupDatabase}
+              disabled={isSettingUp}
+              variant="outline"
+              size="sm"
+              className="text-red-700 border-red-300 hover:bg-red-100 bg-transparent"
+            >
+              <Settings className="h-3 w-3 mr-1" />
+              {isSettingUp ? "Setting up..." : "Setup Database"}
+            </Button>
+            <Button
+              onClick={checkConnection}
+              variant="outline"
+              size="sm"
+              className="text-red-700 border-red-300 hover:bg-red-100 bg-transparent"
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Retry
+            </Button>
           </div>
-          <Button
-            onClick={checkDatabaseStatus}
-            variant="outline"
-            size="sm"
-            className="ml-4 border-green-300 text-green-700 hover:bg-green-100 bg-transparent"
-          >
-            <Database className="h-4 w-4 mr-2" />
-            Test Again
-          </Button>
+        </div>
+        <div className="text-xs text-red-600 mt-1">Last checked: {lastChecked}</div>
+        <div className="text-xs text-red-600 mt-1">
+          The database might need to be set up. Click "Setup Database" to create tables and sample data.
         </div>
       </AlertDescription>
     </Alert>

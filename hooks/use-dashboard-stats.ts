@@ -1,12 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-
-interface DashboardStats {
-  totalInvoices: number
-  totalValue: number
-  totalItems: number
-}
+import type { DashboardStats } from "@/lib/supabase-db"
 
 export function useDashboardStats() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -22,16 +17,16 @@ export function useDashboardStats() {
       const response = await fetch("/api/dashboard/stats")
       const result = await response.json()
 
-      console.log("Hook: Stats response:", result)
+      console.log("Hook: Dashboard stats response:", result)
 
       if (result.success) {
         setStats(result.data)
         setError(null)
       } else {
-        setError(result.error || "Failed to fetch stats")
+        setError(result.error || "Failed to fetch dashboard statistics")
       }
     } catch (err) {
-      console.error("Hook: Error fetching stats:", err)
+      console.error("Hook: Error fetching dashboard stats:", err)
       setError("Network error occurred")
     } finally {
       setLoading(false)

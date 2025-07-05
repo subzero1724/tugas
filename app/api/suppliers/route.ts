@@ -3,10 +3,16 @@ import { getSuppliers } from "@/lib/supabase-db"
 
 export async function GET() {
   try {
+    console.log("API: Fetching suppliers...")
     const suppliers = await getSuppliers()
-    return NextResponse.json({ success: true, data: suppliers })
+    console.log("API: Suppliers fetched:", suppliers.length)
+
+    return NextResponse.json({
+      success: true,
+      data: suppliers,
+    })
   } catch (error) {
-    console.error("Error fetching suppliers:", error)
+    console.error("API: Error fetching suppliers:", error)
     return NextResponse.json(
       {
         success: false,
