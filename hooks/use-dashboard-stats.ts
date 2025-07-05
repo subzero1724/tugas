@@ -16,8 +16,13 @@ export function useDashboardStats() {
   const fetchStats = async () => {
     try {
       setLoading(true)
+      setError(null)
+
+      console.log("Fetching dashboard stats...")
       const response = await fetch("/api/dashboard/stats")
       const result = await response.json()
+
+      console.log("Stats response:", result)
 
       if (result.success) {
         setStats(result.data)
@@ -26,8 +31,8 @@ export function useDashboardStats() {
         setError(result.error || "Failed to fetch stats")
       }
     } catch (err) {
-      setError("Network error occurred")
       console.error("Error fetching stats:", err)
+      setError("Network error occurred")
     } finally {
       setLoading(false)
     }

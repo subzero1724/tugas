@@ -36,6 +36,8 @@ export default function Home() {
       created_by: "admin",
     }
 
+    console.log("Submitting invoice data:", invoiceData)
+
     const result = await createInvoice(invoiceData)
 
     if (result.success) {
@@ -53,6 +55,17 @@ export default function Home() {
       month: "numeric",
       year: "numeric",
     })
+  }
+
+  const formatCurrency = (amount: number) => {
+    if (isNaN(amount) || amount === null || amount === undefined) {
+      return "Rp 0"
+    }
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(amount)
   }
 
   if (showForm) {
@@ -135,7 +148,7 @@ export default function Home() {
                   invoice={{
                     id: invoice.id,
                     supplierCode: invoice.supplier_code || "",
-                    supplierName: invoice.supplier_name || "",
+                    supplierName: invoice.supplier_name || invoice.supplier_code || "",
                     date: formatDateForDisplay(invoice.invoice_date),
                     invoiceNumber: invoice.invoice_number,
                     items: [], // Will be loaded when detail is opened

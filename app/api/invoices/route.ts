@@ -3,8 +3,14 @@ import { getInvoices, createInvoice, type CreateInvoiceData } from "@/lib/supaba
 
 export async function GET() {
   try {
+    console.log("Fetching invoices...")
     const invoices = await getInvoices()
-    return NextResponse.json({ success: true, data: invoices })
+    console.log("Invoices fetched:", invoices.length)
+
+    return NextResponse.json({
+      success: true,
+      data: invoices,
+    })
   } catch (error) {
     console.error("Error fetching invoices:", error)
     return NextResponse.json(
@@ -21,6 +27,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    console.log("Received invoice data:", body)
 
     // Validate required fields
     if (!body.supplier_code || !body.invoice_number || !body.invoice_date) {
@@ -46,7 +53,9 @@ export async function POST(request: NextRequest) {
 
     // Calculate total amount from items
     const totalAmount = body.items.reduce((sum: number, item: any) => {
-      return sum + item.quantity * item.unit_price
+      const qty = Number(item.quantity) || 0
+      const price = Number(item.unit_price) || 0
+      return sum + qty * price
     }, 0)
 
     const invoiceData: CreateInvoiceData = {
@@ -58,11 +67,14 @@ export async function POST(request: NextRequest) {
       notes: body.notes || "",
       items: body.items.map((item: any) => ({
         product_code: item.product_code,
-        quantity: Number.parseInt(item.quantity),
-        unit_price: Number.parseFloat(item.unit_price),
-        line_total: Number.parseInt(item.quantity) * Number.parseFloat(item.unit_price),
+        product_name: item.product_name,
+        quantity: Number(item.quantity) || 0,
+        unit_price: Number(item.unit_price) || 0,
+        line_total: (Number(item.quantity) || 0) * (Number(item.unit_price) || 0),
       })),
     }
+
+    console.log("Processed invoice data:", invoiceData)
 
     const invoice = await createInvoice(invoiceData)
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import type { Invoice } from "@/lib/types"
+import type { Invoice } from "@/lib/supabase-db"
 
 export function useInvoices() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -11,8 +11,13 @@ export function useInvoices() {
   const fetchInvoices = async () => {
     try {
       setLoading(true)
+      setError(null)
+
+      console.log("Fetching invoices...")
       const response = await fetch("/api/invoices")
       const result = await response.json()
+
+      console.log("Invoices response:", result)
 
       if (result.success) {
         setInvoices(result.data)
@@ -21,8 +26,8 @@ export function useInvoices() {
         setError(result.error || "Failed to fetch invoices")
       }
     } catch (err) {
-      setError("Network error occurred")
       console.error("Error fetching invoices:", err)
+      setError("Network error occurred")
     } finally {
       setLoading(false)
     }
@@ -30,6 +35,8 @@ export function useInvoices() {
 
   const createInvoice = async (invoiceData: any) => {
     try {
+      console.log("Creating invoice:", invoiceData)
+
       const response = await fetch("/api/invoices", {
         method: "POST",
         headers: {
@@ -39,6 +46,7 @@ export function useInvoices() {
       })
 
       const result = await response.json()
+      console.log("Create invoice response:", result)
 
       if (result.success) {
         await fetchInvoices() // Refresh the list

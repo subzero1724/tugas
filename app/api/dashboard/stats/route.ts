@@ -4,8 +4,14 @@ import type { CreateInvoiceRequest } from "@/lib/supabase-db"
 
 export async function GET() {
   try {
+    console.log("Fetching dashboard stats...")
     const stats = await getDashboardStats()
-    return NextResponse.json({ success: true, data: stats })
+    console.log("Stats fetched:", stats)
+
+    return NextResponse.json({
+      success: true,
+      data: stats,
+    })
   } catch (error) {
     console.error("Error fetching dashboard stats:", error)
     return NextResponse.json(

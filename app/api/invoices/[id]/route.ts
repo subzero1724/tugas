@@ -15,7 +15,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true, data: invoice })
+    return NextResponse.json({
+      success: true,
+      data: invoice,
+    })
   } catch (error) {
     console.error("Error fetching invoice:", error)
     return NextResponse.json(
