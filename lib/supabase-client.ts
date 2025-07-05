@@ -4,39 +4,34 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-// Client-side Supabase client (for browser)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// Server-side Supabase client (for API routes)
-export function createServerSupabaseClient() {
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("Missing Supabase environment variables")
 }
 
-/**
- * Attempts a lightweight query against the `suppliers` table
- * to confirm the Supabase credentials are valid.
- */
-export async function testSupabaseConnection() {
+// Client-side Supabase client (uses anon key)
+export const createClientSupabaseClient = () => {
+  return createClient(supabaseUrl, supabaseAnonKey)
+}
+
+// Server-side Supabase client (uses service role key)
+export const createServerSupabaseClient = () => {
+  return createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey)
+}
+
+// Test connection function
+export const testSupabaseConnection = async () => {
   try {
-    // We only need a trivial query to ensure connectivity
-    const { error } = await supabase.from("suppliers").select("id").limit(1)
+    const supabase = createClientSupabaseClient()
+    const { data, error } = await supabase.from("suppliers").select("count").limit(1)
 
     if (error) {
-      console.error("Supabase connection error:", error)
+      console.error("Supabase connection test failed:", error)
       return { success: false, error: error.message }
     }
 
-    return { success: true, message: "Connected to Supabase successfully" }
-  } catch (err) {
-    console.error("Supabase test failed:", err)
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Unknown error",
-    }
+    return { success: true, data }
+  } catch (error) {
+    console.error("Supabase connection test error:", error)
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
   }
 }
