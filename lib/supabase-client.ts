@@ -2,18 +2,14 @@ import { createClient } from "@supabase/supabase-js"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+// Client-side Supabase client (for browser)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-/**
- * Create a Supabase client that can be used on the server
- * (e.g. inside Route Handlers or Server Actions).
- * Falls back to the anon key if `SUPABASE_SERVICE_ROLE_KEY`
- * is not present.
- */
+// Server-side Supabase client (for API routes)
 export function createServerSupabaseClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey
-  return createClient(supabaseUrl, serviceRoleKey, {
+  return createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -21,18 +17,26 @@ export function createServerSupabaseClient() {
   })
 }
 
+/**
+ * Attempts a lightweight query against the `suppliers` table
+ * to confirm the Supabase credentials are valid.
+ */
 export async function testSupabaseConnection() {
   try {
-    const { data, error } = await supabase.from("suppliers").select("count(*)").limit(1)
+    // We only need a trivial query to ensure connectivity
+    const { error } = await supabase.from("suppliers").select("id").limit(1)
 
     if (error) {
       console.error("Supabase connection error:", error)
       return { success: false, error: error.message }
     }
 
-    return { success: true, data }
-  } catch (error) {
-    console.error("Supabase connection failed:", error)
-    return { success: false, error: "Connection failed" }
+    return { success: true, message: "Connected to Supabase successfully" }
+  } catch (err) {
+    console.error("Supabase test failed:", err)
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Unknown error",
+    }
   }
 }
